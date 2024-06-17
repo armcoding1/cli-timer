@@ -34,17 +34,17 @@ io.on("connection", (socket) => {
         const seconds = Math.floor((time % (1000 * 60)) / 1000);
         return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     };
-    
+
     const timerUpdateInterval = setInterval(async () => {
         const users = await User.find();
         const timersData = await Promise.all(users.map(async (user) => {
             const timers = await Timer.find({ user_id: user._id });
             const currentTime = new Date().getTime();
-    
+
             return timers.map(timer => {
                 const elapsedTime = currentTime - timer.start_time;
                 const formattedTime = formatTime(elapsedTime);
-    
+
                 if (timer.stoppedTime !== 0) {
                     const formattedStoppedTime = formatTime(timer.stoppedTime);
                     return {
@@ -64,10 +64,10 @@ io.on("connection", (socket) => {
                 }
             });
         }));
-    
+
         io.emit("timer_update", { timers: timersData.flat() });
     }, 1000);
-    
+
 
     socket.on("signup", async (data, callback) => {
         const { name, password } = data;
@@ -211,8 +211,35 @@ io.on("connection", (socket) => {
     });
 
 
-    socket.on("logout", (data, callback) => {
-        callback({ message: "Logged out successfully!" });
+    socket.on("logout", async (data, callback) => {
+        try {
+            const sessionFileData = JSON.parse(fs.readFileSync(sessionFileName, "utf-8"));
+            const { userId } = sessionFileData;
+
+            if (!userId) {
+                callback({ error: "User is not logged in." });
+                console.log("User is not logged in.");
+                return;
+            }
+
+            const user = await User.findById(userId);
+
+            if (!user) {
+                return callback({ error: 'User not found' });
+            }
+
+            const timers = await Timer.find({ user_id: userId });
+            await Promise.all(timers.map(async (timer) => {
+                const currentTime = new Date().getTime();
+                const stoppedTime = currentTime - timer.start_time;
+                await Timer.findByIdAndUpdate(timer._id, { stoppedTime: stoppedTime });
+            }));
+
+            callback({ message: "Logged out successfully!" });
+        } catch (error) {
+            console.error('Error logging out:', error);
+            callback({ error: 'Internal server error.' });
+        }
     });
 
     socket.on("disconnect", () => {
