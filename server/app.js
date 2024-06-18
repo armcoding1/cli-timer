@@ -68,7 +68,6 @@ io.on("connection", (socket) => {
         io.emit("timer_update", { timers: timersData.flat() });
     }, 1000);
 
-
     socket.on("signup", async (data, callback) => {
         const { name, password } = data;
         try {
@@ -175,17 +174,10 @@ io.on("connection", (socket) => {
 
             const timerData = timers.map(timer => {
                 const elapsedTime = currentTime - timer.start_time;
-                const hours = Math.floor(elapsedTime / (1000 * 60 * 60));
-                const minutes = Math.floor((elapsedTime % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((elapsedTime % (1000 * 60)) / 1000);
-                const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                const formattedTime = formatTime(elapsedTime);
 
                 if (timer.stoppedTime !== 0) {
-                    const hoursStop = Math.floor(timer.stoppedTime / (1000 * 60 * 60));
-                    const minutesStop = Math.floor((timer.stoppedTime % (1000 * 60 * 60)) / (1000 * 60));
-                    const secondsStop = Math.floor((timer.stoppedTime % (1000 * 60)) / 1000);
-                    const formattedStoppedTime = `${hoursStop.toString().padStart(2, '0')}:${minutesStop.toString().padStart(2, '0')}:${secondsStop.toString().padStart(2, '0')}`;
-
+                    const formattedStoppedTime = formatTime(timer.stoppedTime);
                     return {
                         id: timer._id,
                         task: timer.timer_name,
@@ -209,7 +201,6 @@ io.on("connection", (socket) => {
             callback({ error: 'Internal server error.' });
         }
     });
-
 
     socket.on("logout", async (data, callback) => {
         try {
